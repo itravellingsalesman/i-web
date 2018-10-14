@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+  <head>   
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script>L_PREFER_CANVAS=false; L_NO_TOUCH=false; L_DISABLE_3D=false;</script>
+    <script ssrc="js/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.2.0/dist/leaflet.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.2.0/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://rawgit.com/python-visualization/folium/master/folium/templates/leaflet.awesome.rotate.css"/>
+    <link rel="shortcut icon" href="img/logo.png" type="image/png">
+    <title>Find & Talk</title>
+    <style>
+            html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+    
+            .modal-body, .modal-content  {
+                -webkit-border-radius: 20px !important;
+                -moz-border-radius: 20px !important;
+                border-radius: 20px !important; 
+                border-color: #f5f5f5;
+            }
+
+            .fade {
+                background-color: #f5f5f5;
+            }
+
+            .submit-btn{
+                background-color: #ff2951 !important;
+                color: #f5f5f5 !important;
+                font-weight: bold; 
+                width: 200px;
+            }
+
+            #map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+            }
+            
+            #map {
+                position: relative;
+                width: 100.0%;
+                height: 100.0%;
+                left: 0.0%;
+                top: 0.0%;
+            }
+
+            #icsair{
+                position: fixed;
+                left: 7px;
+                top: 80px;
+                z-index: 44;
+                
+            }
+
+            #icsair:hover{
+                cursor: pointer !important
+            }
+
+        </style>
+        <script src="https://leaflet.github.io/Leaflet.heat/dist/leaflet-heat.js"></script>
+    </head>
+
+    <body>
+           
+        <div id="map"  class="folium-map" id="conteudo" style="z-index: 1;"></div>
+        <img id="icsair" src="img/exit.svg" width="40px" height="40px" onclick="logout()">
+        
+        <div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true" data-backdrop="static" >
+            <div class="modal-dialog modal-dialog-centered" style="width: 400px" role="document">
+                <div class="modal-content">
+    
+                    <div class="modal-body" align="center" style="z-index: 9999999; padding-top: 50px; background-image: linear-gradient(to top right, #00c3f4, #006680)">
+                        <div class="alerts-error"></div>
+                        <img src="img/logo-branca.png" width="180px" height="180px">
+                        <form onsubmit="validarLogin(this)">
+                            <div class="form-group" style="color:white; padding-top: 50px;">
+                                <label >Login:</label>
+                                <input class="form-control" name="user" id="input-user" aria-describedby="emailHelp" placeholder="Login">
+                            </div>
+                            <div class="form-group" style="color:white;">
+                                <label >Senha:</label>
+                                <input type="password" name="pass" id="input-senha" class="form-control" placeholder="Senha">
+                            </div>
+                            <div class="text-center" style="padding-top: 20px;">
+                                <button type="submit" class="btn submit-btn">Entrar</button>  
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+
+
+  <script>
+    $(document).ready(function(){
+        $('#exampleModalCenter').modal({ keyboard: false });
+        $('#exampleModalCenter').modal('show');
+    });
+    
+    let usu = 0;
+    function validarLogin(form)
+    {
+        event.preventDefault();
+        $(".alerts-error .alert").alert('close');
+        const user = form.user.value;
+        const senha = form.pass.value;
+
+            var js = {
+        "username":user,
+        "password":senha
+        };
+
+
+        //LOGAR
+        $.ajax({
+            url: 'http://192.168.0.176:8084/WService01/webresources/service01/user/login',
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            success: function (data) {
+                $('#exampleModalCenter').modal('hide');
+                $("#conteudo").show();
+                getPoints();
+            },
+            data: JSON.stringify(js)
+        })
+        .fail(function() {
+            $(".alerts-error").html('<div class="alert alert-danger alert-dismissible fade show" role="alert">Usuario e/ou senha invalidos</div>');
+        })
+    }
+
+    function logout()
+    {
+        location.reload();
+    }
+
+    function getPoints() 
+    {
+        $.ajax(
+        {
+            url: 'http://192.168.0.176:8084/WService01/webresources/service01/user/locations/2',
+            type: 'get',
+            dataType: 'json',
+            contentType: 'application/json',
+            success: function (data) 
+            {
+                var bounds = null;
+                var map = L.map('map', 
+                {
+                    center: [-22.133982,-51.4498415],
+                    zoom: 17,
+                    maxBounds: bounds,
+                    layers: [],
+                    worldCopyJump: false,
+                    crs: L.CRS.EPSG3857,
+                    zoomControl: true,
+                });
+
+                var tile_layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                {
+                    "attribution": null,
+                    "detectRetina": false,
+                    "maxNativeZoom": 18,
+                    "maxZoom": 18,
+                    "minZoom": 0,
+                    "noWrap": false,
+                    "subdomains": "abc"
+                }).addTo(map);
+                
+                var dados = [];
+                for(aux in data.data)
+                    dados.push([parseFloat(data.data[aux].latitude), parseFloat(data.data[aux].longitude)]);
+                  
+                    console.log(dados);
+                    var heat_map = L.heatLayer(
+                    dados,
+                    {
+                        minOpacity: 0.5,
+                        maxZoom: 5,
+                        max: 1.0,
+                        radius: 25,
+                        blur: 15,
+                        gradient: null
+                        })
+                    .addTo(map);
+            }
+        })
+       .fail(function() {
+            alert("ERRO");
+        })
+    }
+
+    // function validarLogin() {
+    //     var xhttp = new XMLHttpRequest();
+
+    //     const user = document.getElementById('input-user').value;
+    //     const senha = document.getElementById('input-senha').value;
+        
+    //     let data = "user="+user+"&senha="+senha;
+    //     xhttp.onreadystatechange = function() {
+    //         if (this.readyState == 4 && this.status == 200) {
+    //             console.log(this.responseText);
+    //         }
+    //     };
+    //     xhttp.open("POST", "http://192.168.0.176:8084/WService01/webresources/service01/user/login", true);
+    //     xhttp.setRequestHeader("Content-Type", "x-www-form-urlencoded");
+    //     xhttp.send(data);
+    // }
+  </script>
+</html>
